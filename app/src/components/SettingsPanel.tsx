@@ -13,9 +13,10 @@ interface Account {
   connected: boolean;
 }
 
-const DEFAULT_SCOPES = ['Mail.ReadWrite', 'Chat.ReadWrite', 'User.Read'];
+const READ_SCOPES = ['Mail.Read', 'Chat.Read', 'User.Read'];
+const WRITE_SCOPES = ['Mail.ReadWrite', 'Chat.ReadWrite', 'User.Read'];
 
-export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () => void; onDataCleared?: () => void }) {
+export default function SettingsPanel({ onClose, onDataCleared, onDataChanged, authMessage, onDismissAuthMessage }: { onClose: () => void; onDataCleared?: () => void; onDataChanged?: () => void; authMessage?: { type: 'error' | 'success'; text: string } | null; onDismissAuthMessage?: () => void }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -29,6 +30,7 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
   const [newName, setNewName] = useState('');
   const [newClientId, setNewClientId] = useState('');
   const [newTenantId, setNewTenantId] = useState('consumers');
+  const [newWriteAccess, setNewWriteAccess] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -55,7 +57,7 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
         provider: 'microsoft',
         clientId: newClientId.trim(),
         tenantId: newTenantId.trim() || 'common',
-        scopes: DEFAULT_SCOPES,
+        scopes: newWriteAccess ? WRITE_SCOPES : READ_SCOPES,
       }),
     });
     if (res.ok) {
@@ -86,6 +88,18 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
     window.location.href = `/api/auth/microsoft/login?accountId=${encodeURIComponent(id)}`;
   };
 
+  const toggleWriteAccess = async (account: Account) => {
+    const hasWrite = account.scopes.some(s => s.includes('Write'));
+    const newScopes = hasWrite ? READ_SCOPES : WRITE_SCOPES;
+    if (!hasWrite && !confirm('Write access (Mail.ReadWrite, Chat.ReadWrite) may require IT/admin approval for work accounts. Continue?')) return;
+    await fetch('/api/accounts', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: account.id, scopes: newScopes }),
+    });
+    fetchAccounts();
+  };
+
   const pollSource = async (source: 'email' | 'teams') => {
     setPolling(p => ({ ...p, [source]: true }));
     setPollResults('');
@@ -95,10 +109,11 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
       if (data.results) {
         const summary = data.results
           .map((r: { account: string; imported: number; errors: string[] }) =>
-            `${r.account}: ${r.imported} imported${r.errors.length > 0 ? `, ${r.errors.length} errors` : ''}`
+            `${r.account}: ${r.imported} imported${r.errors.length > 0 ? ` (errors: ${r.errors.join('; ')})` : ''}`
           )
           .join('; ');
         setPollResults(`${source}: ${summary || 'No results'}`);
+        onDataChanged?.();
       } else {
         setPollResults(data.message || 'Done');
       }
@@ -122,6 +137,18 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
           </svg>
         </button>
       </div>
+
+      {/* Auth message banner */}
+      {authMessage && (
+        <div className={`mb-4 flex items-center justify-between rounded-lg px-4 py-3 text-sm ${
+          authMessage.type === 'error'
+            ? 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-300'
+            : 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300'
+        }`}>
+          <span>{authMessage.text}</span>
+          <button onClick={onDismissAuthMessage} className="ml-2 font-bold opacity-60 hover:opacity-100">&times;</button>
+        </div>
+      )}
 
       {/* Connected Accounts */}
       <section className="mb-8">
@@ -172,6 +199,18 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
                   className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-mono text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="write-access"
+                  checked={newWriteAccess}
+                  onChange={e => setNewWriteAccess(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 text-blue-600 dark:border-zinc-600"
+                />
+                <label htmlFor="write-access" className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Write access <span className="text-zinc-400 dark:text-zinc-500">(send email &amp; Teams — may need IT approval)</span>
+                </label>
+              </div>
               <button
                 onClick={addAccount}
                 disabled={!newName.trim() || !newClientId.trim()}
@@ -215,7 +254,7 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {account.tenantId === 'consumers' ? 'Personal' : account.tenantId} · {account.scopes.length} scope{account.scopes.length !== 1 ? 's' : ''}
+                    {account.tenantId === 'consumers' ? 'Personal' : account.tenantId} · {account.scopes.some(s => s.includes('Write')) ? 'Read/Write' : 'Read-only'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -227,6 +266,13 @@ export default function SettingsPanel({ onClose, onDataCleared }: { onClose: () 
                       Connect
                     </button>
                   )}
+                  <button
+                    onClick={() => toggleWriteAccess(account)}
+                    className="rounded-lg px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    title={account.scopes.some(s => s.includes('Write')) ? 'Switch to read-only (no admin approval needed)' : 'Enable write access (may need admin approval)'}
+                  >
+                    {account.scopes.some(s => s.includes('Write')) ? '→ Read-only' : '→ Read/Write'}
+                  </button>
                   <button
                     onClick={() => toggleAccount(account.id, !account.enabled)}
                     className={`rounded-lg px-3 py-1 text-xs font-medium ${

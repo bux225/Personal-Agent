@@ -131,7 +131,7 @@ interface GraphMessagesResponse {
 export async function fetchChats(account: AccountConfig): Promise<GraphChat[]> {
   const res = await graphFetch(
     account,
-    '/me/chats?$expand=members&$top=25&$orderby=lastUpdatedDateTime desc',
+    '/me/chats?$top=25',
   );
   const data = await res.json() as GraphChatsResponse;
   return data.value;

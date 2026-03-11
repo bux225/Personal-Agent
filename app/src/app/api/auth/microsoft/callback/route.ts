@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const errorDescription = request.nextUrl.searchParams.get('error_description');
 
   if (error) {
-    console.error('OAuth error:', error, errorDescription);
+    console.error(`[auth] OAuth callback error: ${error} — ${errorDescription}`);
     // Redirect to settings with error
     return NextResponse.redirect(
       new URL(`/?settings=true&authError=${encodeURIComponent(errorDescription ?? error)}`, request.url),
@@ -19,10 +19,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code || !state) {
+    console.log(`[auth][callback] Missing code or state. code=${!!code}, state=${!!state}`);
     return NextResponse.redirect(
       new URL('/?settings=true&authError=Missing+code+or+state', request.url),
     );
   }
+
+  console.log(`[auth][callback] Received callback. state length=${state.length}, state prefix=${state.slice(0, 30)}...`);
+  console.log(`[auth][callback] Full state: ${state}`);
+  console.log(`[auth][callback] Full URL: ${request.url}`);
 
   // Find the account from state — try all Microsoft accounts
   const config = loadConfig();
@@ -31,11 +36,13 @@ export async function GET(request: NextRequest) {
   let handled = false;
   for (const account of microsoftAccounts) {
     try {
+      console.log(`[auth] Attempting token exchange for "${account.name}"...`);
       await handleCallback(code, state, account);
+      console.log(`[auth] Token exchange successful for "${account.name}"`);
       handled = true;
       break;
-    } catch {
-      // State didn't match this account, try next
+    } catch (err) {
+      console.log(`[auth] Token exchange failed for "${account.name}": ${err instanceof Error ? err.message : err}`);
     }
   }
 

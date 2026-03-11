@@ -27,7 +27,26 @@ export default function KnowledgeBase() {
   const [fetchError, setFetchError] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Handle OAuth callback query params (?authError=... or ?authSuccess=true)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get('authError');
+    const authSuccess = params.get('authSuccess');
+    if (authError) {
+      setAuthMessage({ type: 'error', text: decodeURIComponent(authError) });
+      setViewMode('settings');
+    } else if (authSuccess) {
+      setAuthMessage({ type: 'success', text: 'Account connected successfully!' });
+      setViewMode('settings');
+    }
+    // Clean up URL
+    if (authError || authSuccess) {
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   const fetchCards = useCallback(async () => {
     abortRef.current?.abort();
@@ -223,7 +242,7 @@ export default function KnowledgeBase() {
         {/* Top panel: card detail, settings, outbox, etc. */}
         <div className="flex-[2] overflow-y-auto border-b border-zinc-200 dark:border-zinc-800">
           {viewMode === 'settings' ? (
-            <SettingsPanel onClose={() => setViewMode('list')} onDataCleared={() => { fetchCards(); setSelectedCard(null); }} />
+            <SettingsPanel onClose={() => { setViewMode('list'); setAuthMessage(null); }} onDataCleared={() => { fetchCards(); setSelectedCard(null); }} onDataChanged={fetchCards} authMessage={authMessage} onDismissAuthMessage={() => setAuthMessage(null)} />
           ) : viewMode === 'digest' ? (
             <DigestPanel />
           ) : viewMode === 'outbox' ? (

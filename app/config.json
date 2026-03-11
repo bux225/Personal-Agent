@@ -1,14 +1,14 @@
 {
   "accounts": [
     {
-      "id": "4b847774-cb5d-4646-96d2-2d1f109fbaaa",
-      "name": "Microsoft 365 Family",
+      "id": "2ddcbef4-c13d-4c22-b69c-07508cb0fa5e",
+      "name": "BD Microsoft 365",
       "provider": "microsoft",
-      "tenantId": "consumers",
-      "clientId": "d6db2f51-ba0c-407b-bf61-9846a2008087",
+      "tenantId": "94c3e67c-9e2d-4800-a6b7-635d97882165",
+      "clientId": "4aaf6921-aeb9-4e02-a32f-d674c42ee111",
       "scopes": [
-        "Mail.ReadWrite",
-        "Chat.ReadWrite",
+        "Mail.Read",
+        "Chat.Read",
         "User.Read"
       ],
       "envKey": "",

@@ -9,7 +9,7 @@ The LLM chat is always visible and serves as the primary interface. You can ask 
 - **Framework**: Next.js 16 + TypeScript + Tailwind CSS 4
 - **Database**: SQLite (better-sqlite3) with FTS5 full-text search
 - **AI**: GitHub Models API (text-embedding-3-small for embeddings, gpt-4o for chat with tool calling)
-- **Auth**: MSAL.js for Microsoft Graph OAuth
+- **Auth**: MSAL Node (ConfidentialClientApplication) for Microsoft Graph OAuth with PKCE
 - **Design**: Config-driven — protocol + config + factory pattern for all external services
 
 ## Getting Started
@@ -21,7 +21,7 @@ cd app
 npm install
 
 # Create env file with your tokens
-cat > .env.local << 'EOF'
+cat > .env << 'EOF'
 GITHUB_TOKEN=your_github_pat_here
 MS_CLIENT_SECRET=your_azure_secret_here
 EOF
@@ -38,6 +38,16 @@ Open [http://localhost:3000](http://localhost:3000) to use the app.
 |---|---|---|
 | `GITHUB_TOKEN` | Yes (for AI) | GitHub PAT with `models:read` scope |
 | `MS_CLIENT_SECRET` | For Graph | Azure AD app client secret |
+
+### Microsoft Graph Scopes
+
+| Scope | Required | Purpose |
+|---|---|---|
+| `Mail.Read` | For email | Read inbox messages |
+| `Chat.Read` | For Teams | Read Teams chat messages |
+| `User.Read` | Yes | Read user profile (sign-in) |
+
+> Read-only scopes (`Mail.Read`, `Chat.Read`) do not require IT admin approval. Write scopes (`Mail.ReadWrite`, `Chat.ReadWrite`) typically require admin consent on enterprise tenants.
 
 > **Want to connect Microsoft email and Teams?** See the [Microsoft Graph Setup Guide](./docs/microsoft-graph-setup.md) for step-by-step instructions.
 
@@ -76,7 +86,7 @@ app/
 │       ├── rag.ts              # RAG orchestration with tool support
 │       ├── chat-tools.ts       # Tool definitions + execution
 │       ├── embeddings.ts       # Vector embeddings
-│       ├── auth.ts             # MSAL.js OAuth
+│       ├── auth.ts             # MSAL Node OAuth + PKCE
 │       ├── tokens.ts           # Token + watermark storage
 │       ├── graph.ts            # Microsoft Graph API client
 │       ├── outbox.ts           # Outbox CRUD

@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { url } = await getAuthUrl(account);
+    const { url, state } = await getAuthUrl(account);
+    console.log(`[auth][login] Redirecting to Microsoft. state length=${state.length}, state prefix=${state.slice(0, 30)}...`);
+    console.log(`[auth][login] Redirect URL: ${url.slice(0, 200)}...`);
     return NextResponse.redirect(url);
   } catch (err) {
     console.error('OAuth login error:', err);
