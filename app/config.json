@@ -1,0 +1,34 @@
+{
+  "accounts": [
+    {
+      "id": "4b847774-cb5d-4646-96d2-2d1f109fbaaa",
+      "name": "Microsoft 365 Family",
+      "provider": "microsoft",
+      "tenantId": "consumers",
+      "clientId": "d6db2f51-ba0c-407b-bf61-9846a2008087",
+      "scopes": [
+        "Mail.ReadWrite",
+        "Chat.ReadWrite",
+        "User.Read"
+      ],
+      "envKey": "",
+      "enabled": true
+    }
+  ],
+  "llm": {
+    "provider": "githubCopilot",
+    "endpoint": "https://models.inference.ai.azure.com",
+    "model": "gpt-4o",
+    "accountRef": "GITHUB_TOKEN"
+  },
+  "embeddings": {
+    "provider": "githubModels",
+    "endpoint": "https://models.inference.ai.azure.com",
+    "model": "text-embedding-3-small",
+    "accountRef": "GITHUB_TOKEN"
+  },
+  "polling": {
+    "emailIntervalSeconds": 60,
+    "teamsIntervalSeconds": 30
+  }
+}
